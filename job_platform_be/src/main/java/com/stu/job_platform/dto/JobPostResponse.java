@@ -35,6 +35,9 @@ public class JobPostResponse {
     // Thống kê
     private long applicationCount;
 
+    // Thông tin VIP
+    private boolean vip;
+
     // Getter & Setter
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
@@ -78,4 +81,7 @@ public class JobPostResponse {
     public void setApplicationCount(long applicationCount) { this.applicationCount = applicationCount; }
     public String getJobCode() { return jobCode; }
     public void setJobCode(String jobCode) { this.jobCode = jobCode; }
+
+    public boolean isVip() { return vip; }
+    public void setVip(boolean vip) { this.vip = vip; }
 }

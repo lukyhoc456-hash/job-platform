@@ -9,6 +9,7 @@ import Home from './page/home/Home';
 import Login from './page/login/Login';
 import Register from './page/register/Register';
 import JobList from './page/jobs/JobList';
+import JobListVip  from './page/jobs/JobListVip';
 import JobDetail from './page/jobs/JobDetail';
 import CompanyList from './page/companies/CompanyList';
 import CompanyDetail from './page/companies/CompanyDetail';
@@ -41,6 +42,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/jobs" element={<JobList />} />
+          <Route path="/jobs/vip" element={<JobListVip />} />
           <Route path="/jobs/:id" element={<JobDetail />} />
           <Route path="/companies" element={<CompanyList />} />
           <Route path="/companies/:id" element={<CompanyDetail />} />

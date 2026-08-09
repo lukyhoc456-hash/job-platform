@@ -98,4 +98,18 @@ public class ProfileController {
             return ResponseEntity.internalServerError().body(Map.of("message", "Lỗi đổi mật khẩu!"));
         }
     }
+
+    @PostMapping("/{userId}/upload-logo")
+    public ResponseEntity<?> uploadLogo(@PathVariable Integer userId,
+                                        @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        try {
+            ProfileRequest updated = profileService.uploadLogo(userId, file);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Lỗi upload logo!");
+        }
+    }
 }

@@ -1,5 +1,6 @@
 package com.stu.job_platform.controller;
 
+import com.stu.job_platform.dto.ApiResponse;
 import com.stu.job_platform.dto.LoginRequest;
 import com.stu.job_platform.dto.LoginResponse;
 import com.stu.job_platform.dto.RefreshTokenRequest;
@@ -13,8 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
 
 @RestController
@@ -38,9 +37,16 @@ public class AuthController {
             return ResponseEntity.badRequest().body(com.stu.job_platform.dto.ApiResponse.error("Email không tồn tại!"));
         }
 
+        
+
         // 2. Kiểm tra mật khẩu đã hash dưới DB bằng BCrypt
         if (!BCrypt.checkpw(request.getPassword(), user.getPassword())) {
             return ResponseEntity.badRequest().body(com.stu.job_platform.dto.ApiResponse.error("Sai mật khẩu!"));
+        }
+
+        if (user.getStatus() == null || user.getStatus() != 1) {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error("Tài khoản đã bị khóa hoặc chưa được kích hoạt!"));
         }
 
         // 3. Đăng nhập đúng -> Khạc ra Access Token (7 phút)

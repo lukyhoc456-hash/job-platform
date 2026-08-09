@@ -1,5 +1,7 @@
 package com.stu.job_platform.entity;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -29,6 +31,12 @@ public class Recruiter {
 
     @Column(name = "status_trust")
     private String statusTrust; // ◄ Khớp chuẩn status_trust ('pending', 'verified', 'banned')
+
+    @Column(name = "vip_status")
+    private Integer vipStatus = 0;
+
+    @Column(name = "vip_until")
+    private LocalDateTime vipUntil;
 
     @OneToOne
     @MapsId

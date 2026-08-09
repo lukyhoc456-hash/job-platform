@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef  } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { checkToken } from '../../service/api';
 import './profile.css';
+import VipHistoryModal from '../../components/VipHistoryModal';
 
 function EditableField({ label, value, onSave, icon = "✏️" }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -60,11 +61,19 @@ function Profile() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passWordData, setPassWordData] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
   const [passWordLoading, setPassWordLoading] = useState(false);
+
+  // State for upgrading to VIP
+  const [upgrading, setUpgrading] = useState(false);
   
   const [cvFile, setCvFile] = useState(null);
   const [uploadingCv, setUploadingCv] = useState(false);
   const [cvBlobUrl, setCvBlobUrl] = useState('');
   const [cvBlobLoading, setCvBlobLoading] = useState(false);
+
+  // State for uploading company logo
+  const [logoFile, setLogoFile] = useState(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef(null);
 
   const navigate = useNavigate();
 
@@ -90,6 +99,18 @@ function Profile() {
     };
   }, [cvBlobUrl]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get('payment');
+    if (paymentStatus === 'success') {
+      setNotify({ type: 'success', msg: '🎉 Nâng cấp VIP thành công!' });
+      window.history.replaceState({}, '', '/profile');
+    } else if (paymentStatus === 'failed') {
+      setNotify({ type: 'error', msg: '❌ Thanh toán không thành công, vui lòng thử lại!' });
+      window.history.replaceState({}, '', '/profile');
+    }
+  }, []);
+
   const handleUpdateField = async (fieldName, updatedValue) => {
     const updatedData = { ...profileData, [fieldName]: updatedValue };
     try {
@@ -105,6 +126,68 @@ function Profile() {
     }
   };
 
+  // Function to handle upgrading to VIP
+  const handleUpgradeVip = async (days) => {
+    setUpgrading(true);
+    try {
+      const res = await api.post('/payment/vnpay/create', { days });
+      window.location.href = res.data.data.paymentUrl;
+    } catch (err) {
+      setNotify({ type: 'error', msg: err.response?.data?.message || 'Không thể tạo link thanh toán!' });
+      setUpgrading(false);
+    }
+  };
+
+  // Function to get the full URL for the company logo
+  const getLogoUrl = (logoPath) => {
+    if (!logoPath) return null;
+    if (logoPath.startsWith('http')) return logoPath;
+    if (logoPath.startsWith('/images/')) return logoPath;
+    const baseUrl = import.meta.env.VITE_API_BASE_URL.replace('/api/v1', '');
+    return `${baseUrl}${logoPath}`;
+  };
+  // Function to handle company logo upload
+  const handleLogoChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const allowedExt = ['.jpg', '.jpeg', '.png'];
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (!allowedExt.includes(ext)) {
+      setNotify({ type: 'error', msg: 'Chỉ chấp nhận file JPG hoặc PNG!' });
+      e.target.value = '';
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setNotify({ type: 'error', msg: 'File tối đa 2MB!' });
+      e.target.value = '';
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      const user = await checkToken();
+      if (!user) { navigate('/login'); return; }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await api.post(`/profile/${user.id}/upload-logo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      setProfileData(res.data);
+      setNotify({ type: 'success', msg: 'Đã cập nhật logo công ty!' });
+      setTimeout(() => setNotify({ type: '', msg: '' }), 2000);
+    } catch (err) {
+      setNotify({ type: 'error', msg: err.response?.data || 'Lỗi tải logo lên!' });
+      console.error(err);
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = '';
+    }
+  };
+  
   const handleCvChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -121,6 +204,8 @@ function Profile() {
     }
     setCvFile(file);
   };
+
+  
 
   const handleUploadCv = async () => {
     if (!cvFile) {
@@ -293,24 +378,58 @@ function Profile() {
   };
 
   const renderStatusBadge = (status) => {
-    if (!status || status === 'pending') return { class: 'status-default', text: 'Chưa xác thực (60đ)' };
-    let parts = [];
-    if (status.includes('name')) parts.push('Tên');
-    if (status.includes('tax')) parts.push('Thuế');
-    const hasWebApproved = status.includes('website') && !status.includes('website_pending');
-    if (hasWebApproved) parts.push('Web');
-
-    if (parts.length === 3) return { class: 'status-approved', text: 'Đã xác thực toàn bộ (100đ) ✓' };
-    
-    // Nếu dính website_pending thì hiển thị thông báo riêng trên badge
-    if (status.includes('website_pending')) {
-      return { class: 'status-pending', text: `Đang chờ Admin duyệt Web (${profileData?.point ?? 90}đ)` };
+    // Chưa xác thực gì
+    if (!status || status === "pending") {
+      return {
+        class: "status-default",
+        text: "Chưa xác thực (60đ)",
+      };
     }
+
+    const parts = [];
+
+    if (status.includes("name")) {
+      parts.push("Tên");
+    }
+
+    if (status.includes("tax")) {
+      parts.push("Thuế");
+    }
+
+    const hasWebApproved =
+      status.includes("website") &&
+      !status.includes("website_pending");
+
+    if (hasWebApproved) {
+      parts.push("Web");
+    }
+
+    // Đã xác thực đủ 3 mục
+    if (parts.length === 3) {
+      return {
+        class: "status-approved",
+        text: "Đã xác thực toàn bộ (100đ) ✓",
+      };
+    }
+
+    // Website đang chờ Admin duyệt
+    if (status.includes("website_pending")) {
+      return {
+        class: "status-pending",
+        text: `Đang chờ Admin duyệt Web (${profileData?.point ?? 90}đ)`,
+      };
+    }
+
+    // Xác thực một phần
+    return {
+      class: "status-partial",
+      text: `Đã xác thực ${parts.join(", ")} (${profileData?.point ?? 80}đ)`,
+    };
   };
 
   if (loading) return <div className="profile-wrapper"><div style={{textAlign: 'center', padding: '40px'}}>Đang tải dữ liệu...</div></div>;
   if (!profileData) return null;
-
+  const isAdmin = profileData.role === 'ADMIN';
   const isRecruiter = profileData.role === 'recruiter';
   const badge = renderStatusBadge(profileData.status);
   
@@ -327,16 +446,41 @@ function Profile() {
   const cvExt = profileData.cvFileName ? profileData.cvFileName.substring(profileData.cvFileName.lastIndexOf('.')).toLowerCase() : '';
   const isCvPdf = cvExt === '.pdf';
 
+  const isVipActive = profileData.vipStatus === 1 && profileData.vipUntil && new Date(profileData.vipUntil) > new Date();
+
   return (
     <div className="profile-wrapper">
       
       {/* Header Profile Glass */}
       <div className="profile-header-glass">
-        <div className="profile-avatar-placeholder">
-          {profileData.name ? profileData.name.charAt(0).toUpperCase() : 'U'}
-        </div>
+        {isRecruiter ? (
+          <div
+            className="profile-avatar-placeholder profile-avatar-logo"
+            onClick={() => logoInputRef.current?.click()}
+          >
+            {profileData.companyLogo ? (
+              <img src={getLogoUrl(profileData.companyLogo)} alt="Company logo" />
+            ) : (
+              <span>{profileData.name ? profileData.name.charAt(0).toUpperCase() : 'U'}</span>
+            )}
+            <div className="avatar-hover-overlay">
+              {uploadingLogo ? '⏳...' : '✏️ Đổi logo công ty'}
+            </div>
+            <input
+              type="file"
+              accept=".jpg,.jpeg,.png"
+              ref={logoInputRef}
+              onChange={handleLogoChange}
+              style={{ display: 'none' }}
+            />
+          </div>
+        ) : (
+          <div className="profile-avatar-placeholder">
+            {profileData.name ? profileData.name.charAt(0).toUpperCase() : 'U'}
+          </div>
+        )}
         <div className="profile-header-info">
-          <h2>{isRecruiter ? 'Hồ Sơ Nhà Tuyển Dụng' : 'Hồ Sơ Ứng Viên'}</h2>
+          <h2>{isAdmin ? 'Hồ Sơ Quản Trị Viên' : (isRecruiter ? 'Hồ Sơ Nhà Tuyển Dụng' : 'Hồ Sơ Ứng Viên')}</h2>
           <div className="profile-email">{profileData.email}</div>
           {isRecruiter && (
             <span className={`status-badge-glass ${badge.class}`}>{badge.text}</span>
@@ -368,7 +512,7 @@ function Profile() {
           <div>
             <ReadOnlyField label="Tên tài khoản" value={profileData.name} icon="👤" />
             <ReadOnlyField label="Email đăng ký" value={profileData.email} icon="✉️" />
-            <ReadOnlyField label="Vai trò" value={isRecruiter ? "Nhà tuyển dụng" : "Ứng viên"} icon="🛡️" />
+            <ReadOnlyField label="Vai trò" value={isAdmin ? "Quản trị viên" : (isRecruiter ? "Nhà tuyển dụng" : "Ứng viên")} icon="🛡️" />
             {isRecruiter && <ReadOnlyField label="Email công ty" value={profileData.companyEmail} icon="🏢" />}
             
             <button 
@@ -383,10 +527,38 @@ function Profile() {
 
         {/* Card 2: Verification / Contact */}
         <div className="profile-card">
-          <h3>{isRecruiter ? 'Xác thực doanh nghiệp (AI)' : 'Thông tin liên hệ & CV'}</h3>
+          <h3>{isAdmin ? 'Thông tin quản trị' : (isRecruiter ? 'Thông tin doanh nghiệp (AI)' : 'Thông tin liên hệ & CV')}</h3>
           
-          {isRecruiter ? (
+          {isAdmin ? (
             <div>
+              <ReadOnlyField label="Quyền hạn" value="Quản trị toàn bộ hệ thống (Full Access)" icon="👑" />
+              <ReadOnlyField label="Trạng thái" value="Đang hoạt động" icon="🟢" />
+            </div>
+          ) : isRecruiter ? (
+            <div>
+                  <div className="profile-field-modern">
+                    <span className="field-label-modern">⭐ Trạng thái VIP:</span>
+                    {isVipActive ? (
+                      <div className="field-value-display">
+                        Đang VIP — hết hạn: {new Date(profileData.vipUntil).toLocaleDateString('vi-VN')}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                        <button className="glass-btn btn-primary" disabled={upgrading} onClick={() => handleUpgradeVip(7)}>
+                          {upgrading ? '⏳...' : '7 ngày - 50.000đ'}
+                        </button>
+                        <button className="glass-btn btn-primary" disabled={upgrading} onClick={() => handleUpgradeVip(30)}>
+                          {upgrading ? '⏳...' : '30 ngày - 150.000đ'}
+                        </button>
+                      </div>
+                    )}
+                    <VipHistoryModal
+                      userName={profileData.name}
+                      email={profileData.email}
+                      role={isAdmin ? 'Quản trị viên' : (isRecruiter ? 'Nhà tuyển dụng' : 'Ứng viên')}
+                      companyEmail={profileData.companyEmail}
+                    />
+                  </div>
               <div className="verify-row-layout">
                 <EditableField label="Tên công ty" value={profileData.companyName} onSave={(val) => handleUpdateField('companyName', val)} icon="🏢" />
                 <button className="glass-btn btn-primary" onClick={() => handleVerifySingleField('companyName', profileData.companyName)} disabled={!!aiLoadingField}>

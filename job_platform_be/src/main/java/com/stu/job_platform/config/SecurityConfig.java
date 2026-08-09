@@ -52,6 +52,8 @@ public class SecurityConfig {
 
                 // API chỉ dành cho ADMIN
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                // API chỉ dành cho RECRUITER
+                .requestMatchers("/api/v1/payment/vnpay/ipn", "/api/v1/payment/vnpay/return").permitAll()
 
                 // Tất cả API còn lại phải đăng nhập
                 .anyRequest().authenticated()

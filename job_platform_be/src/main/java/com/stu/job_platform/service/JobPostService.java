@@ -11,9 +11,11 @@ import com.stu.job_platform.repository.JobPostRepository;
 import com.stu.job_platform.repository.RecruiterRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -192,9 +194,18 @@ public class JobPostService {
      * Tìm kiếm nâng cao
      */
     public Page<JobPostResponse> searchJobs(String keyword, Integer categoryId, Integer industryId,
-                                             String location, String jobType, Pageable pageable) {
-        return jobPostRepository.searchJobs(keyword, categoryId, industryId, location, jobType, pageable)
+                                             String location, String jobType, boolean vipOnly, Pageable pageable) {
+        return jobPostRepository.searchJobs(keyword, categoryId, industryId, location, jobType, vipOnly, pageable)
                 .map(this::toResponse);
+    }
+
+    /**
+     * Lấy N bài đăng của các recruiter đang VIP (dùng cho component "Đối Tác Việc Làm Tốt")
+     */
+    public List<JobPostResponse> getVipJobs(int limit) {
+        return jobPostRepository.findVipJobs(PageRequest.of(0, limit)).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -262,6 +273,19 @@ public class JobPostService {
         if (jobPost.getJobCategory() != null) {
             dto.setCategoryId(jobPost.getJobCategory().getId());
             dto.setCategoryName(jobPost.getJobCategory().getName());
+        }
+
+        if (jobPost.getRecruiter() != null) {
+            dto.setRecruiterId(jobPost.getRecruiter().getId());
+            dto.setCompanyName(jobPost.getRecruiter().getCompanyName());
+            dto.setCompanyLogo(jobPost.getRecruiter().getLogo());
+            dto.setCompanyPoint(jobPost.getRecruiter().getPoint());
+
+            boolean isVip = jobPost.getRecruiter().getVipStatus() != null
+                    && jobPost.getRecruiter().getVipStatus() == 1
+                    && jobPost.getRecruiter().getVipUntil() != null
+                    && jobPost.getRecruiter().getVipUntil().isAfter(LocalDateTime.now());
+            dto.setVip(isVip);
         }
 
         // Đếm số ứng tuyển

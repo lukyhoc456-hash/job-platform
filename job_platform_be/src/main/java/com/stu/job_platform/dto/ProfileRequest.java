@@ -1,5 +1,7 @@
 package com.stu.job_platform.dto;
 
+import java.time.LocalDateTime;
+
 public class ProfileRequest {
     // Tài khoản chung
     private String email;
@@ -18,6 +20,9 @@ public class ProfileRequest {
     private String taxCode;
     private String websiteUrl;
     private Integer point;
+    private Integer vipStatus;
+    private LocalDateTime vipUntil;
+    private String companyLogo;
 
     // --- GETTER & SETTER THUỒN (CHỐNG LỖI LOMBOK) ---
     public String getEmail() { return email; }
@@ -44,4 +49,10 @@ public class ProfileRequest {
     public void setWebsiteUrl(String websiteUrl) { this.websiteUrl = websiteUrl; }
     public Integer getPoint() { return point; }
     public void setPoint(Integer point) { this.point = point; }
+    public Integer getVipStatus() { return vipStatus; }
+    public void setVipStatus(Integer vipStatus) { this.vipStatus = vipStatus; }
+    public LocalDateTime getVipUntil() { return vipUntil; }
+    public void setVipUntil(LocalDateTime vipUntil) { this.vipUntil = vipUntil; }
+    public String getCompanyLogo() { return companyLogo; }
+    public void setCompanyLogo(String companyLogo) { this.companyLogo = companyLogo; }
 }

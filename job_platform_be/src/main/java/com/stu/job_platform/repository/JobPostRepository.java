@@ -23,20 +23,24 @@ public interface JobPostRepository extends JpaRepository<JobPost, Integer> {
 
     // Tìm kiếm nâng cao: theo từ khóa (title hoặc jdText), danh mục, địa điểm, loại
     // công việc
+    // sửa lại searchJobs: thêm điều kiện lọc vipOnly
     @Query("SELECT j FROM JobPost j WHERE j.status = 1 " +
         "AND (:keyword IS NULL OR LOWER(j.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
         "    OR LOWER(cast(j.jdText as string)) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
         "AND (:categoryId IS NULL OR j.jobCategory.id = :categoryId) " +
         "AND (:industryId IS NULL OR j.jobCategory.industry.id = :industryId) " +
         "AND (:location IS NULL OR LOWER(j.location) LIKE LOWER(CONCAT('%', :location, '%'))) " +
-        "AND (:jobType IS NULL OR j.jobType = :jobType)")
+        "AND (:jobType IS NULL OR j.jobType = :jobType) " +
+        "AND (:vipOnly = false OR (j.recruiter.vipStatus = 1 AND j.recruiter.vipUntil > CURRENT_TIMESTAMP))")
         Page<JobPost> searchJobs(
                 @Param("keyword") String keyword,
                 @Param("categoryId") Integer categoryId,
                 @Param("industryId") Integer industryId,
                 @Param("location") String location,
                 @Param("jobType") String jobType,
+                @Param("vipOnly") boolean vipOnly,
                 Pageable pageable);
+
 
     // Đếm số bài đăng theo recruiter
     long countByRecruiterId(Integer recruiterId);
@@ -63,4 +67,12 @@ public interface JobPostRepository extends JpaRepository<JobPost, Integer> {
 
     @Query("SELECT COUNT(DISTINCT j.recruiter.id) FROM JobPost j WHERE j.status = 1")
     long countDistinctActiveRecruiters();
+
+
+     /** Lấy job của recruiter đang VIP còn hiệu lực, mới nhất trước */
+    @Query("SELECT j FROM JobPost j WHERE j.status = 1 " +
+            "AND j.recruiter.vipStatus = 1 " +
+            "AND j.recruiter.vipUntil > CURRENT_TIMESTAMP " +
+            "ORDER BY j.createdAt DESC")
+    List<JobPost> findVipJobs(Pageable pageable);
 }

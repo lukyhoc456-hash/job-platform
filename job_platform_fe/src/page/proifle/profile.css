@@ -397,3 +397,38 @@
 }
 
 .mt-3 { margin-top: 12px; }
+
+.profile-avatar-logo {
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+}
+
+.profile-avatar-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.avatar-hover-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.65);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.profile-avatar-logo:hover .avatar-hover-overlay {
+  opacity: 1;
+}

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.beans.factory.annotation.Value;
 import java.util.*;
 
@@ -18,6 +19,7 @@ public class ProfileService {
     @Autowired private CandidateRepository candidateRepository;
     @Autowired private RecruiterRepository recruiterRepository;
     @Autowired private AiVerificationService aiVerificationService;
+    @Autowired private FileUploadService fileUploadService;
 
     @Value("${file.upload-dir}")
     String uploadDir;
@@ -44,6 +46,9 @@ public class ProfileService {
                 dto.setWebsiteUrl(rec.getWebsiteUrl());
                 dto.setStatus(rec.getStatusTrust() != null ? rec.getStatusTrust() : "pending");
                 dto.setPoint(rec.getPoint() != null ? rec.getPoint() : 80);
+                dto.setVipStatus(rec.getVipStatus());
+                dto.setVipUntil(rec.getVipUntil());
+                dto.setCompanyLogo(rec.getLogo());
             } else {
                 // Nếu chưa có bản ghi dưới DB con, trả về giá trị mặc định tránh sập FE
                 dto.setCompanyName("");
@@ -160,6 +165,38 @@ public class ProfileService {
         return getProfileData(userId, "candidate");
     }
 
+    // Upload logo for recruiter
+    private static final List<String> ALLOWED_LOGO_EXT = List.of(".jpg", ".jpeg", ".png");
+    // Upload logo for recruiter
+    public ProfileRequest uploadLogo(Integer userId, MultipartFile file) {
+        Recruiter rec = recruiterRepository.findById(userId).orElse(new Recruiter());
+        rec.setId(userId);
+
+        String originalName = file.getOriginalFilename();
+        if (originalName == null || !originalName.contains(".")) {
+            throw new IllegalArgumentException("Tên file không hợp lệ");
+        }
+        String ext = originalName.substring(originalName.lastIndexOf('.')).toLowerCase();
+        if (!ALLOWED_LOGO_EXT.contains(ext)) {
+            throw new IllegalArgumentException("Chỉ chấp nhận JPG hoặc PNG");
+        }
+        if (file.getSize() > 2 * 1024 * 1024) {
+            throw new IllegalArgumentException("File vượt quá 2MB");
+        }
+
+        String oldLogo = rec.getLogo();
+
+        String newLogoPath = fileUploadService.uploadFile(file, "logo");
+        rec.setLogo(newLogoPath);
+        recruiterRepository.save(rec);
+
+        if (oldLogo != null && !oldLogo.isBlank()) {
+            fileUploadService.deleteFile(oldLogo);
+        }
+
+        return getProfileData(userId, "recruiter");
+    }
+
     // Hàm lấy nhanh thông tin Recruiter phục vụ cho việc kiểm tra tuần tự ở Controller
     public Recruiter getRecruiterById(Integer userId) {
         return recruiterRepository.findById(userId).orElse(null);
@@ -193,7 +230,10 @@ public class ProfileService {
         if (matchPercentage >= 90) {
             if ("companyName".equals(fieldType)) verifiedFields.add("name");
             else if ("taxCode".equals(fieldType)) verifiedFields.add("tax");
-            else if ("websiteUrl".equals(fieldType)) verifiedFields.add("website");
+            else if ("websiteUrl".equals(fieldType)){ 
+                verifiedFields.add("website");
+                verifiedFields.remove("website_pending"); // remove pending if it was there
+            }
 
             if (verifiedFields.containsAll(Set.of("name", "tax", "website"))) {
                 rec.setStatusTrust("verified," + String.join(",", verifiedFields)); // "verified,name,tax,website"

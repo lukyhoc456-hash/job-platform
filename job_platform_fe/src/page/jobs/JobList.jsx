@@ -2,16 +2,19 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../service/api';
 import JobCard from '../../components/JobCard';
+import VipJobsWidget from '../../components/VipJobsWidget';
 import './JobList.css';
 
 function JobList() {
   const [jobs, setJobs] = useState([]);
+  const [vipJobs, setVipJobs] = useState([]);
   const [categories, setCategories] = useState([]);
   const [industries, setIndustries] = useState([]);
   const [jobTypes, setJobTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(0);
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   // Filter states
   const [keyword, setKeyword] = useState(searchParams.get('keyword') || '');
@@ -20,6 +23,8 @@ function JobList() {
   const [location, setLocation] = useState(searchParams.get('location') || '');
   const [jobType, setJobType] = useState(searchParams.get('jobType') || '');
   const [page, setPage] = useState(0);
+
+  const PAGE_SIZE = 10;
 
   const fetchIndustries = async () => {
     try {
@@ -45,8 +50,24 @@ function JobList() {
       if (res.data.success) setJobTypes(res.data.data || []);
     } catch (err) {
       console.error(err);
-    } 
+    }
   };
+
+  const fetchVipJobs = async () => {
+    try {
+      const res = await api.get('/jobs/vip?limit=12');
+      if (res.data.success) setVipJobs(res.data.data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Rotate VIP jobs for display
+  function rotateVipJobs(jobs, offset) {
+    if (jobs.length === 0) return jobs;
+    const k = offset % jobs.length;
+    return [...jobs.slice(k), ...jobs.slice(0, k)];
+  }
 
   const fetchJobs = async () => {
     setLoading(true);
@@ -57,8 +78,9 @@ function JobList() {
       if (categoryId) params.append('categoryId', categoryId);
       if (location) params.append('location', location);
       if (jobType) params.append('jobType', jobType);
+      
       params.append('page', page);
-      params.append('size', 12);
+      params.append('size', PAGE_SIZE);
 
       const res = await api.get(`/jobs?${params.toString()}`);
       if (res.data.success) {
@@ -76,18 +98,19 @@ function JobList() {
     fetchCategories();
     fetchIndustries();
     fetchJobTypes();
+    fetchVipJobs();    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     fetchJobs();
-    // scrollToTop if page changes
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, keyword, categoryId, industryId, location, jobType]);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    setPage(0);
-    fetchJobs();
+    setPage(0); // useEffect ở trên sẽ tự fetch lại khi page về 0
   };
 
   const clearFilters = () => {
@@ -97,6 +120,10 @@ function JobList() {
     setLocation('');
     setJobType('');
     setPage(0);
+  };
+
+  const goToVipJobs = () => {
+    navigate('/jobs/vip');
   };
 
   return (
@@ -205,9 +232,25 @@ function JobList() {
           ) : (
             <>
               <div>
-                {jobs.map((job) => (
-                  <JobCard key={job.id} job={job} />
-                ))}
+                {jobs.length > 0 && vipJobs.length > 0 && (
+                  <VipJobsWidget jobs={vipJobs} onSeeMore={goToVipJobs} />
+                )}
+
+                {jobs.map((job, idx) => {
+                  const isMiddle = jobs.length >= 5 && idx === Math.floor(jobs.length / 2) - 1;
+                  return (
+                    <div key={job.id}>
+                      <JobCard job={job} />
+                      {isMiddle && vipJobs.length > 0 && (
+                        <VipJobsWidget jobs={rotateVipJobs(vipJobs, 4)} onSeeMore={goToVipJobs} />
+                      )}
+                    </div>
+                  );
+                })}
+
+                {jobs.length >= 5 && vipJobs.length > 0 && (
+                  <VipJobsWidget jobs={rotateVipJobs(vipJobs, 8)} onSeeMore={goToVipJobs} />
+                )}
               </div>
 
               {/* PAGINATION */}
@@ -218,11 +261,10 @@ function JobList() {
                     disabled={page === 0} 
                     onClick={() => setPage(p => p - 1)}
                   >
-                    ← Lùi
+                    ← Trước
                   </button>
                   
                   {Array.from({ length: totalPages }, (_, i) => {
-                    // Hiển thị max 5 trang cho gọn
                     if (i === 0 || i === totalPages - 1 || Math.abs(page - i) <= 1) {
                       return (
                         <button 
@@ -246,7 +288,7 @@ function JobList() {
                     disabled={page >= totalPages - 1} 
                     onClick={() => setPage(p => p + 1)}
                   >
-                    Tiến →
+                    Sau →
                   </button>
                 </div>
               )}

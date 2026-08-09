@@ -36,11 +36,12 @@ public class JobPostController {
             @RequestParam(required = false) Integer industryId,
             @RequestParam(required = false) String location,
             @RequestParam(required = false) String jobType,
+            @RequestParam(required = false, defaultValue = "false") boolean vip,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<JobPostResponse> result = jobPostService.searchJobs(keyword, categoryId, industryId, location, jobType, pageable);
+        Page<JobPostResponse> result = jobPostService.searchJobs(keyword, categoryId, industryId, location, jobType, vip, pageable);
         return ResponseEntity.ok(ApiResponse.success("Tìm kiếm thành công!", result));
     }
 
@@ -121,4 +122,15 @@ public class JobPostController {
         Integer recruiterId = (Integer) auth.getPrincipal();
         return ResponseEntity.ok(ApiResponse.success(jobPostService.getJobsByRecruiter(recruiterId)));
     }
+
+
+    /**
+     * Lấy job của các recruiter VIP (component "Từ Đối Tác Việc Làm Tốt")
+     */
+    @GetMapping("/vip")
+    public ResponseEntity<ApiResponse<List<JobPostResponse>>> getVipJobs(
+            @RequestParam(defaultValue = "8") int limit) {
+        return ResponseEntity.ok(ApiResponse.success(jobPostService.getVipJobs(limit)));
+    }
+
 }

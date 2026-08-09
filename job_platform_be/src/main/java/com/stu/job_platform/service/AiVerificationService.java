@@ -157,7 +157,7 @@ public class AiVerificationService {
 
                     Website cần thẩm định:
                     "%s"
-
+                
                     Domain website:
                     "%s"
 
