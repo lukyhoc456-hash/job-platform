@@ -11,6 +11,7 @@ import com.stu.job_platform.entity.JobCategory;
 import com.stu.job_platform.entity.Recruiter;
 import com.stu.job_platform.entity.User;
 import com.stu.job_platform.repository.*;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +31,7 @@ public class AdminService {
     @Autowired private CandidateRepository candidateRepository;
     @Autowired private RecruiterRepository recruiterRepository;
     @Autowired private JobPostService jobPostService;
+    @Autowired private RefreshTokenRepository refreshTokenRepository;
 
     AdminService(IndustryRepository industryRepository, JobCategoryRepository jobCategoryRepository) {
         this.industryRepository = industryRepository;
@@ -151,11 +153,16 @@ public class AdminService {
         .getRole();
     }
 
+    @Transactional
     public void toggleUserStatus(Integer userId, Integer status) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
         user.setStatus(status);
         userRepository.save(user);
+        // Khi khóa tài khoản (status = 0), xóa refresh token để buộc đăng xuất ngay
+        if (status == 0) {
+            refreshTokenRepository.deleteByUser(user);
+        }
     }
 
     public void deleteUser(Integer userId) {

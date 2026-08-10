@@ -15,7 +15,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
-
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
@@ -34,28 +33,27 @@ public class AuthController {
         // 1. Tìm user theo email
         User user = userRepository.findByEmail(request.getEmail());
         if (user == null) {
-            return ResponseEntity.badRequest().body(com.stu.job_platform.dto.ApiResponse.error("Email không tồn tại!"));
+            return ResponseEntity.badRequest().body(ApiResponse.error("Email không tồn tại!"));
         }
-
-        
 
         // 2. Kiểm tra mật khẩu đã hash dưới DB bằng BCrypt
         if (!BCrypt.checkpw(request.getPassword(), user.getPassword())) {
-            return ResponseEntity.badRequest().body(com.stu.job_platform.dto.ApiResponse.error("Sai mật khẩu!"));
+            return ResponseEntity.badRequest().body(ApiResponse.error("Sai mật khẩu!"));
         }
 
+        // 3. Kiểm tra tài khoản có bị khóa không (status = 0 là bị khóa)
         if (user.getStatus() == null || user.getStatus() != 1) {
-        return ResponseEntity.badRequest()
-                .body(ApiResponse.error("Tài khoản đã bị khóa hoặc chưa được kích hoạt!"));
+            return ResponseEntity.status(403)
+                    .body(ApiResponse.error("Tài khoản đã bị khóa hoặc chưa được kích hoạt!"));
         }
 
-        // 3. Đăng nhập đúng -> Khạc ra Access Token (7 phút)
+        // 4. Đăng nhập đúng -> Khạc ra Access Token (7 phút)
         String accessToken = jwtUtil.generateAccessToken(user);
 
-        // 4. Khạc tiếp Refresh Token (5 ngày) và lưu xuống DB bảng refresh_tokens
+        // 5. Khạc tiếp Refresh Token (5 ngày) và lưu xuống DB bảng refresh_tokens
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getId());
 
-        // 5. Trả cặp đôi này về cho React
+        // 6. Trả cặp đôi này về cho React
         return ResponseEntity.ok(new LoginResponse(accessToken, refreshToken.getToken()));
     }
 
@@ -68,12 +66,16 @@ public class AuthController {
                 .map(refreshTokenService::verifyExpiration)
                 .map(RefreshToken::getUser)
                 .map(user -> {
+                    // Kiểm tra tài khoản có bị khóa không trước khi cấp token mới
+                    if (user.getStatus() == null || user.getStatus() != 1) {
+                        return ResponseEntity.status(403)
+                                .body(ApiResponse.error("Tài khoản đã bị khóa hoặc chưa được kích hoạt!"));
+                    }
                     String newAccessToken = jwtUtil.generateAccessToken(user);
                     return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
                 })
                 .orElseThrow(() -> new RuntimeException("Refresh Token không hợp lệ dưới DB!"));
     }
-
 
     // Xóa cục token thô dưới DB khi người dùng bấm nút Logout
     @PostMapping("/logout")
@@ -81,11 +83,11 @@ public class AuthController {
         String requestRefreshToken = request.getToken();
 
         // Xóa cục token thô dưới DB
-        if(requestRefreshToken != null && !requestRefreshToken.isEmpty()) {
+        if (requestRefreshToken != null && !requestRefreshToken.isEmpty()) {
             refreshTokenService.deleteByToken(requestRefreshToken);
         }
 
-        return ResponseEntity.ok(com.stu.job_platform.dto.ApiResponse.success("Đăng xuất thành công!"));
+        return ResponseEntity.ok(ApiResponse.success("Đăng xuất thành công!"));
     }
-    
+
 }
