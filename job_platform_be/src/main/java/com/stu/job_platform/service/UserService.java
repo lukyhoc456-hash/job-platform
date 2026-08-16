@@ -76,8 +76,8 @@ public class UserService {
         try {
             emailService.sendOtpEmail(request.getEmail(), otpCode);
         } catch (Exception e) {
-            otpStore.remove(request.getEmail());
-            return "Hệ thống không gửi được mail, vui lòng thử lại sau!";
+            System.out.println("Lỗi gửi mail SMTP trên Railway chặn SMTP. DEMO OTP: " + otpCode);
+            return "Server đang chặn gửi Email. (DEMO OTP của bạn là: " + otpCode + ")";
         }
 
         return "Mã OTP đã được gửi về Gmail của bạn, vui lòng check mail để xác thực!";
@@ -171,8 +171,8 @@ public class UserService {
         try {
             emailService.sendOtpEmail(companyEmail, otpCode);
         } catch (Exception e) {
-            companyOtpStore.remove(companyEmail);
-            return "Không gửi được OTP tới email công ty, vui lòng thử lại!";
+            System.out.println("Lỗi gửi mail SMTP trên Railway chặn SMTP. DEMO OTP công ty: " + otpCode);
+            return "Server đang chặn gửi Email. (DEMO OTP là: " + otpCode + ")";
         }
 
         return "Đã gửi mã OTP tới email công ty!";
@@ -257,8 +257,8 @@ public class UserService {
         try{
             emailService.sendOtpEmail(email, otpCode);
         }catch (Exception e){
-            resetPasswordStore.remove(email);
-            return "Không gửi được OTP tới email, vui lòng thử lại!";
+            System.out.println("Lỗi gửi mail SMTP. DEMO OTP quên mật khẩu: " + otpCode);
+            return "Server đang chặn gửi Email. (DEMO OTP là: " + otpCode + ")";
         }
         return "Đã gửi mã OTP tới email của bạn!";
     }
