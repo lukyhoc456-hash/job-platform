@@ -203,7 +203,7 @@ public class AiVerificationService {
         headers.set("Authorization", "Bearer " + key.apiKey);
 
         Map<String, Object> requestBody = Map.of(
-            "model", "llama-3.3-70b-versatile", 
+            "model", "openai/gpt-oss-120b", 
             "messages", List.of(Map.of("role", "user", "content", prompt)),
             "temperature", 0.1
         );
