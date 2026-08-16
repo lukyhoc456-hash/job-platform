@@ -72,8 +72,9 @@ public class SecurityConfig {
         // Chỉ định đích danh duy nhất Domain Frontend của mày, cấm tuyệt đối dùng dấu "*"
         configuration.setAllowedOrigins(java.util.Arrays.asList(
             "http://localhost:5173",
-            "https://job-platform.vercel.app",      // URL chính thức trên Vercel (cập nhật lại sau khi deploy)
-            "https://job-platform-fe.vercel.app"    // URL dự phòng Vercel
+            "https://job-platform-one-pied.vercel.app",                          // URL chính thức
+            "https://job-platform-git-main-lukyhoc456-hashs-projects.vercel.app", // URL preview branch
+            "https://job-platform-dp4azxz2k-lukyhoc456-hashs-projects.vercel.app" // URL preview deploy
         ));
         
         // Cho phép nhận diện đầy đủ các phương thức và mọi Header truyền lên từ Axios Frontend
