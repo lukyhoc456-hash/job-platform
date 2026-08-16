@@ -39,6 +39,14 @@ function MyApplications() {
     }
   };
 
+  const getLogoUrl = (logoPath) => {
+    if (!logoPath) return null;
+    if (logoPath.startsWith('http')) return logoPath;
+    if (logoPath.startsWith('/images/')) return logoPath;
+    const baseUrl = import.meta.env.VITE_API_BASE_URL.replace('/api/v1', '');
+    return `${baseUrl}${logoPath}`;
+  };
+
   return (
     <div style={{ backgroundColor: '#f5f7fa', minHeight: 'calc(100vh - 70px)', padding: '40px 0' }}>
       <div className="container" style={{ maxWidth: '1000px', margin: '0 auto', padding: '0 20px' }}>
@@ -78,7 +86,7 @@ function MyApplications() {
                 {/* Company Logo */}
                 <div style={{ width: '80px', height: '80px', borderRadius: '8px', border: '1px solid #f1f5f9', backgroundColor: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', flexShrink: 0 }}>
                   {app.jobPost.recruiter.logo ? (
-                    <img src={`${import.meta.env.VITE_API_BASE_URL.replace('/api/v1', '')}${app.jobPost.recruiter.logo}`} alt={app.jobPost.recruiter.companyName} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                    <img src={getLogoUrl(app.jobPost.recruiter.logo)} alt={app.jobPost.recruiter.companyName} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                   ) : (
                     <span style={{ fontSize: '32px', fontWeight: 'bold', color: '#ed1b2f' }}>{app.jobPost.recruiter.companyName.charAt(0).toUpperCase()}</span>
                   )}
